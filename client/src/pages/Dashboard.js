@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Feed from '../components/Feed';
 import CreatePost from '../components/CreatePost';
+import Notifications from '../components/Notifications'; // Fixed: ../ instead of ./
 import { setUserEmailHeader } from '../services/api';
 
 export default function Dashboard() {
@@ -55,6 +56,10 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <main className="notion-main">
         <div className="notion-content">
+          {/* Notifications appear at the top of the main screen */}
+          <Notifications />
+          
+          {/* Show the selected tab */}
           {activeTab === 'feed' && <Feed />}
           {activeTab === 'create' && <CreatePost onSuccess={() => setActiveTab('feed')} />}
         </div>

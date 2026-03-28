@@ -5,16 +5,18 @@ const categories = ['Electronics','ID Cards','Keys','Clothing','Bags','Documents
 const statuses = ['Lost','Found'];
 
 export default function CreatePost({ onSuccess }) {
-  const [form, setForm] = useState({ title:'', description:'', category:'Electronics', status:'Lost', zone:'', sensitivity:'Low' });
+  const [form, setForm] = useState({ 
+    title:'', description:'', category:'Electronics', status:'Lost', zone:'', sensitivity:'Low', bcvQuestion: '', bcvAnswer: '' 
+  });
   const [msg, setMsg] = useState('');
 
   const submit = async (e) => {
     e.preventDefault();
     try {
       await API.post('/items', form);
-      setForm({ title:'', description:'', category:'Electronics', status:'Lost', zone:'', sensitivity:'Low' });
+      setForm({ title:'', description:'', category:'Electronics', status:'Lost', zone:'', sensitivity:'Low', bcvQuestion: '', bcvAnswer: '' });
       window.dispatchEvent(new Event('refreshFeed'));
-      if(onSuccess) onSuccess(); // Switch back to feed after posting
+      if(onSuccess) onSuccess(); 
     } catch (err) {
       setMsg(err.response?.data?.message || 'Error');
     }
@@ -23,10 +25,9 @@ export default function CreatePost({ onSuccess }) {
   return (
     <section className="notion-page">
       <h1 className="page-title">Report an Item</h1>
-      <p className="page-subtitle">Fill out the details below so the campus community can help.</p>
       
       <form onSubmit={submit} className="notion-form">
-        <input className="notion-input title-input" required placeholder="Item Title (e.g., Blue Backpack)" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
+        <input className="notion-input title-input" required placeholder="Item Title" value={form.title} onChange={e=>setForm({...form, title: e.target.value})} />
         <textarea className="notion-input" rows="4" placeholder="Detailed description..." value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
         
         <div className="form-row">
@@ -56,6 +57,20 @@ export default function CreatePost({ onSuccess }) {
             </select>
           </div>
         </div>
+
+        {/* FR10: Blind Claim Verification Fields */}
+        {form.status === 'Found' && form.sensitivity === 'High' && (
+          <div className="form-row" style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
+            <div className="input-group">
+              <label>Verification Question (For Claimers)</label>
+              <input className="notion-input" placeholder="e.g., What is the lock screen wallpaper?" value={form.bcvQuestion} onChange={e=>setForm({...form, bcvQuestion: e.target.value})} />
+            </div>
+            <div className="input-group">
+              <label>Secret Answer (Will be hidden & encrypted)</label>
+              <input className="notion-input" type="password" placeholder="Answer..." value={form.bcvAnswer} onChange={e=>setForm({...form, bcvAnswer: e.target.value})} />
+            </div>
+          </div>
+        )}
 
         <button type="submit" className="btn-primary" style={{marginTop: '20px'}}>Submit Post</button>
       </form>

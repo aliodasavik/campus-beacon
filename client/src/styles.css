@@ -459,3 +459,49 @@ input, textarea, select { display:block; margin:8px 0; padding:8px; width:100%; 
 
 .btn-outline.small { padding: 6px 12px; font-size: 13px; border-color: rgba(0,0,0,0.1); }
 .empty-state { text-align: center; color: #787774; padding: 40px; }
+
+/* Add this CSS to your main stylesheet (e.g., client/src/styles.css) */
+
+.search-and-filter-panel {
+  width: 100%;
+  margin-bottom: 30px; /* Add space between filters and item list */
+}
+
+/* The container for our new search bar */
+.google-search-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+/* The main search input styling */
+.google-search-input {
+  width: 100%;
+  max-width: 600px; /* Controls the max width of the search bar */
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 24px; /* Makes it pill-shaped */
+  border: 1px solid #dfe1e5;
+  box-shadow: none;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.google-search-input:hover,
+.google-search-input:focus {
+  outline: none;
+  box-shadow: 0 1px 6px rgba(32,33,36,0.28);
+  border-color: rgba(223,225,229,0);
+}
+
+/* Container for the dropdown filters */
+.filter-controls {
+  display: flex;
+  justify-content: center; /* Center the dropdowns */
+  gap: 15px; /* Add space between dropdowns */
+  flex-wrap: wrap; /* Allows filters to wrap on smaller screens */
+}
+
+/* This hides the old filter container */
+.notion-filters {
+  display: none;
+}

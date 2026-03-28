@@ -8,7 +8,15 @@ const itemSchema = new mongoose.Schema({
   zone: { type: String, default: '' },
   sensitivity: { type: String, enum: ['Low','Medium','High'], default: 'Low' },
   postedByEmail: { type: String },
+  
+  // FR10: Blind Claim Verification
+  bcvQuestion: { type: String, default: '' },
+  bcvAnswerHash: { type: String, default: '' },
+  
   createdAt: { type: Date, default: Date.now }
 });
+
+// FR7: Full Text Search Index
+itemSchema.index({ title: 'text', description: 'text' });
 
 module.exports = mongoose.model('Item', itemSchema);
