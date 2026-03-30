@@ -1,19 +1,28 @@
+// Client/src/pages/Login.js
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { setUserEmailHeader } from '../services/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { loginUser, setAuthHeaders } from '../services/api';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email.includes('@')) {
-      localStorage.setItem('userEmail', email);
-      setUserEmailHeader(email);
+    setError('');
+    try {
+      const res = await loginUser({ username, password });
+      
+      // Save data like you were doing before + the new token
+      localStorage.setItem('userEmail', res.data.email);
+      localStorage.setItem('token', res.data.token);
+      setAuthHeaders(res.data.email, res.data.token);
+      
       navigate('/dashboard');
-    } else {
-      alert('Please enter a valid university email.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
     }
   };
 
@@ -21,17 +30,31 @@ export default function Login() {
     <div className="landing-page center-content">
       <div className="login-card">
         <h2>Student Login</h2>
+        {error && <p style={{color: 'red'}}>{error}</p>}
         <form onSubmit={handleLogin}>
           <input 
-            type="email" 
-            placeholder="e.g., student@g.bracu.ac.bd" 
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
+            type="text" 
+            placeholder="Username" 
+            value={username} 
+            onChange={e => setUsername(e.target.value)} 
             required 
             className="login-input"
           />
-          <button type="submit" className="btn-primary large full-width">Continue to Dashboard</button>
+          <input 
+            type="password" 
+            placeholder="Password" 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            required 
+            className="login-input"
+          />
+          <button type="submit" className="btn-primary large full-width">Login</button>
         </form>
+        
+        {/* The link you requested */}
+        <p style={{ marginTop: '15px', textAlign: 'center' }}>
+          New here? <Link to="/signup">signup.</Link>
+        </p>
       </div>
     </div>
   );

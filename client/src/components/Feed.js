@@ -41,25 +41,26 @@ export default function Feed(){
   };
 
   const handleClaimRequest = async (item) => {
-    try {
-      const res = await API.post('/claims', { itemId: item._id });
-      const claim = res.data;
-
-      if (item.sensitivity === 'High' && item.bcvQuestion) {
-        const answer = window.prompt(`Verification Question: ${item.bcvQuestion}\nEnter your answer:`);
-        if (answer) {
-          try {
-            await API.post('/claims/verify', { claimId: claim._id, answer });
-            alert('Verification passed! Claim submitted successfully.');
-          } catch (err) {
-            alert('Verification failed. Incorrect answer.');
-          }
-        } else {
-          alert('Claim pending, but verification is required to proceed.');
-        }
-      } else {
-        alert('Claim request sent successfully to the finder!');
+    let payload = { itemId: item._id };
+    
+    // If it's a high-sensitivity item, prompt for the answer
+    if (item.sensitivity === 'High' && item.bcvQuestion) {
+      const answer = window.prompt(
+        `This item requires verification.\nPlease answer the following question for the finder to review:\n\nQuestion: ${item.bcvQuestion}`
+      );
+      
+      if (!answer) {
+        alert("Claim cancelled. An answer is required to proceed.");
+        return; // Stop the process if the user cancels
       }
+      // Add the answer to our API request payload
+      payload.answer = answer;
+    }
+    
+    try {
+      // Send the request. The payload will include the answer if it was provided.
+      await API.post('/claims', payload);
+      alert('Your claim has been sent to the finder for review!');
     } catch (err) {
       alert(err.response?.data?.message || 'Error submitting claim.');
     }

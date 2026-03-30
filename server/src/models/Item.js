@@ -11,7 +11,6 @@ const itemSchema = new mongoose.Schema({
   
   // FR10: Blind Claim Verification
   bcvQuestion: { type: String, default: '' },
-  bcvAnswerHash: { type: String, default: '' },
   
   createdAt: { type: Date, default: Date.now }
 });

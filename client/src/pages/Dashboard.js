@@ -2,21 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Feed from '../components/Feed';
 import CreatePost from '../components/CreatePost';
-import Notifications from '../components/Notifications'; // Fixed: ../ instead of ./
-import { setUserEmailHeader } from '../services/api';
+import Notifications from '../components/Notifications';
+import Settings from '../components/Settings'; // <-- 1. Import Settings
+import { setAuthHeaders } from '../services/api';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('feed');
   const navigate = useNavigate();
   const userEmail = localStorage.getItem('userEmail');
+  const token = localStorage.getItem('token'); 
 
   useEffect(() => {
-    if (!userEmail) navigate('/login');
-    else setUserEmailHeader(userEmail);
-  }, [navigate, userEmail]);
+    if (!userEmail || !token) {
+      navigate('/login');
+    } else {
+      setAuthHeaders(userEmail, token);
+    }
+  }, [navigate, userEmail, token]);
 
   const handleLogout = () => {
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('token'); 
     navigate('/');
   };
 
@@ -46,6 +52,13 @@ export default function Dashboard() {
           >
             ✍️ Report an Item
           </button>
+          {/* 2. Added Settings Button */}
+          <button 
+            className={`nav-btn ${activeTab === 'settings' ? 'active' : ''}`} 
+            onClick={() => setActiveTab('settings')}
+          >
+            ⚙️ Settings
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -56,12 +69,12 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <main className="notion-main">
         <div className="notion-content">
-          {/* Notifications appear at the top of the main screen */}
           <Notifications />
           
-          {/* Show the selected tab */}
+          {/* 3. Show Tabs */}
           {activeTab === 'feed' && <Feed />}
           {activeTab === 'create' && <CreatePost onSuccess={() => setActiveTab('feed')} />}
+          {activeTab === 'settings' && <Settings onLogout={handleLogout} />} {/* Added Settings */}
         </div>
       </main>
     </div>
