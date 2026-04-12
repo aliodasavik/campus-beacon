@@ -3,19 +3,25 @@ const mongoose = require('mongoose');
 const itemSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: '' },
-  category: { type: String, enum: ['Electronics','ID Cards','Keys','Clothing','Bags','Documents','Others'], required: true },
-  status: { type: String, enum: ['Lost','Found','Claimed','Resolved'], default: 'Lost' },
+  category: { type: String, enum: ['Electronics', 'ID Cards', 'Keys', 'Clothing', 'Bags', 'Documents', 'Others'], required: true },
+  status: { type: String, enum: ['Lost', 'Found', 'Claimed', 'Resolved'], default: 'Lost' },
   zone: { type: String, default: '' },
-  sensitivity: { type: String, enum: ['Low','Medium','High'], default: 'Low' },
+  sensitivity: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
   postedByEmail: { type: String },
-  
+
   // FR10: Blind Claim Verification
   bcvQuestion: { type: String, default: '' },
-  
+  bcvAnswerHash: { type: String, default: '' },
+
+  // FR12: ID Card Matcher
+  cardType: { type: String, default: '' },
+  holderName: { type: String, default: '' },
+  idNumber: { type: String, default: '' },
+
   createdAt: { type: Date, default: Date.now }
 });
 
 // FR7: Full Text Search Index
-itemSchema.index({ title: 'text', description: 'text' });
+itemSchema.index({ title: 'text', description: 'text', holderName: 'text', idNumber: 'text' });
 
 module.exports = mongoose.model('Item', itemSchema);

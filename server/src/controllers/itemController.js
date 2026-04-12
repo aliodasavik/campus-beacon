@@ -6,18 +6,17 @@ exports.createItem = async (req, res) => {
     const { bcvAnswer, ...itemData } = req.body;
     let bcvAnswerHash = '';
 
-    // FR10: Securely hash the answer if provided
     if (bcvAnswer && itemData.sensitivity === 'High') {
       const salt = await bcrypt.genSalt(10);
       bcvAnswerHash = await bcrypt.hash(bcvAnswer.toLowerCase().trim(), salt);
     }
 
-    const item = new Item({ 
-      ...itemData, 
+    const item = new Item({
+      ...itemData,
       bcvAnswerHash,
-      postedByEmail: req.user.email 
+      postedByEmail: req.user.email
     });
-    
+
     await item.save();
     res.status(201).json(item);
   } catch (err) {
@@ -27,14 +26,10 @@ exports.createItem = async (req, res) => {
 
 exports.listItems = async (req, res) => {
   try {
-    // Manually ensure the index exists every time (good for debugging)
-    await Item.ensureIndexes(); 
+    await Item.ensureIndexes();
 
     const { q, category, status, sort } = req.query;
     const filter = {};
-    
-    // --- DEBUG LOG 1 ---
-    console.log(`[DEBUG] Received Request Query:`, req.query);
 
     if (category) filter.category = category;
     if (status) filter.status = status;
@@ -42,9 +37,6 @@ exports.listItems = async (req, res) => {
     if (q) {
       filter.$text = { $search: q };
     }
-
-    // --- DEBUG LOG 2 ---
-    console.log(`[DEBUG] Constructed MongoDB Filter:`, filter);
 
     let query = Item.find(filter);
 
@@ -59,11 +51,10 @@ exports.listItems = async (req, res) => {
     const items = await query.select('-bcvAnswerHash').exec();
     res.json(items);
   } catch (err) {
-    // --- DEBUG LOG 3 ---
-    console.error("[ERROR] during listItems:", err); 
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 exports.updateStatus = async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
@@ -75,5 +66,55 @@ exports.updateStatus = async (req, res) => {
     res.json(item);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.findIdCardMatches = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+
+    if (item.category !== 'ID Cards') {
+      return res.status(400).json({ message: 'Matching is only available for ID Cards' });
+    }
+
+    const oppositeStatus = item.status === 'Lost' ? 'Found' : 'Lost';
+
+    const matchFilter = {
+      _id: { $ne: item._id },
+      category: 'ID Cards',
+      status: oppositeStatus
+    };
+
+    const possibleMatches = await Item.find(matchFilter).select('-bcvAnswerHash');
+
+    const normalizedHolderName = (item.holderName || '').trim().toLowerCase();
+    const normalizedIdNumber = (item.idNumber || '').trim().toLowerCase();
+    const normalizedCardType = (item.cardType || '').trim().toLowerCase();
+
+    const scoredMatches = possibleMatches
+      .map(candidate => {
+        let score = 0;
+
+        if ((candidate.cardType || '').trim().toLowerCase() === normalizedCardType && normalizedCardType) {
+          score += 3;
+        }
+
+        if ((candidate.holderName || '').trim().toLowerCase() === normalizedHolderName && normalizedHolderName) {
+          score += 5;
+        }
+
+        if ((candidate.idNumber || '').trim().toLowerCase() === normalizedIdNumber && normalizedIdNumber) {
+          score += 7;
+        }
+
+        return { ...candidate.toObject(), matchScore: score };
+      })
+      .filter(match => match.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore || new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(scoredMatches);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
