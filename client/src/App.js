@@ -6,7 +6,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup'; // <-- Import Signup
 import Dashboard from './pages/Dashboard';
-
+import ChatPage from './pages/ChatPage';
 function App() {
   return (
     <Router>
@@ -15,6 +15,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} /> {/* <-- Add Route */}
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/chat/:chatId" element={<ChatPage />} />
       </Routes>
     </Router>
   );
