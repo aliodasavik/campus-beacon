@@ -1,4 +1,6 @@
 const Item = require('../models/Item');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 
 exports.createItem = async (req, res) => {
@@ -6,18 +8,17 @@ exports.createItem = async (req, res) => {
     const { bcvAnswer, ...itemData } = req.body;
     let bcvAnswerHash = '';
 
-    // FR10: Securely hash the answer if provided
     if (bcvAnswer && itemData.sensitivity === 'High') {
       const salt = await bcrypt.genSalt(10);
       bcvAnswerHash = await bcrypt.hash(bcvAnswer.toLowerCase().trim(), salt);
     }
 
-    const item = new Item({ 
-      ...itemData, 
+    const item = new Item({
+      ...itemData,
       bcvAnswerHash,
-      postedByEmail: req.user.email 
+      postedByEmail: req.user.email
     });
-    
+
     await item.save();
     res.status(201).json(item);
   } catch (err) {
@@ -27,14 +28,10 @@ exports.createItem = async (req, res) => {
 
 exports.listItems = async (req, res) => {
   try {
-    // Manually ensure the index exists every time (good for debugging)
-    await Item.ensureIndexes(); 
+    await Item.ensureIndexes();
 
     const { q, category, status, sort } = req.query;
     const filter = {};
-    
-    // --- DEBUG LOG 1 ---
-    console.log(`[DEBUG] Received Request Query:`, req.query);
 
     if (category) filter.category = category;
     if (status) filter.status = status;
@@ -42,9 +39,6 @@ exports.listItems = async (req, res) => {
     if (q) {
       filter.$text = { $search: q };
     }
-
-    // --- DEBUG LOG 2 ---
-    console.log(`[DEBUG] Constructed MongoDB Filter:`, filter);
 
     let query = Item.find(filter);
 
@@ -59,11 +53,10 @@ exports.listItems = async (req, res) => {
     const items = await query.select('-bcvAnswerHash').exec();
     res.json(items);
   } catch (err) {
-    // --- DEBUG LOG 3 ---
-    console.error("[ERROR] during listItems:", err); 
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 exports.updateStatus = async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
@@ -75,5 +68,55 @@ exports.updateStatus = async (req, res) => {
     res.json(item);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.triggerSOS = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+
+    if (item.postedByEmail !== req.user.email) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (item.status !== 'Lost') {
+      return res.status(400).json({ message: 'SOS can only be triggered for lost items' });
+    }
+
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.sosUsed) {
+      return res.status(400).json({ message: 'You have already used your SOS broadcast' });
+    }
+
+    item.isSOS = true;
+    await item.save();
+
+    user.sosUsed = true;
+    await user.save();
+
+    const recipients = await User.find({
+      isVerified: true,
+      email: { $ne: req.user.email }
+    });
+
+    const notifications = recipients.map(u => ({
+      recipientEmail: u.email,
+      message: `🚨 SOS ALERT: "${item.title}" was reported lost in ${item.zone || 'an unknown area'}. Please check the feed for details.`,
+      type: 'Alert'
+    }));
+
+    if (notifications.length > 0) {
+      await Notification.insertMany(notifications);
+    }
+
+    res.json({
+      message: 'SOS broadcast sent successfully',
+      item
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
