@@ -8,7 +8,7 @@ const claimRoutes = require('./routes/claimRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 
@@ -27,6 +27,8 @@ app.use('/api/claims', claimRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chats', chatRoutes);
+
 // 4. Base health-check route
 app.get('/', (req, res) => res.send({ ok: true, message: 'CampusBeacon API' }));
 

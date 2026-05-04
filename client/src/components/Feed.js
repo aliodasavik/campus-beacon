@@ -7,6 +7,7 @@ const statuses = ['', 'Lost', 'Found', 'Claimed', 'Resolved'];
 export default function Feed() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState({ q: '', category: '', status: '', sort: 'newest' });
+  const [matches, setMatches] = useState({});
   const currentUserEmail = API.defaults.headers.common['x-user-email'];
 
   async function load() {
@@ -18,7 +19,8 @@ export default function Feed() {
       if (filter.sort) params.sort = filter.sort;
 
       const res = await API.get('/items', { params });
-
+      
+      // Filter out hidden items
       const visibleItems = res.data.filter(item => !item.isHidden);
       setItems(visibleItems);
     } catch (err) {
@@ -54,7 +56,6 @@ export default function Feed() {
         alert('Claim cancelled. An answer is required to proceed.');
         return;
       }
-
       payload.answer = answer;
     }
 
@@ -82,6 +83,34 @@ export default function Feed() {
     }
   };
 
+  const handleSOS = async (item) => {
+    const confirmed = window.confirm(
+      `Send SOS broadcast for "${item.title}"?\n\nThis should only be used for urgent lost items.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await API.put(`/items/${item._id}/sos`);
+      alert('SOS broadcast sent successfully.');
+      window.dispatchEvent(new Event('refreshFeed'));
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error sending SOS.');
+    }
+  };
+
+  const handleFindMatches = async (itemId) => {
+    try {
+      const res = await API.get(`/items/${itemId}/matches`);
+      setMatches(prev => ({
+        ...prev,
+        [itemId]: res.data
+      }));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error finding matches.');
+    }
+  };
+
   return (
     <section className="notion-page">
       <h1 className="page-title">Item Feed</h1>
@@ -97,35 +126,13 @@ export default function Feed() {
         </div>
 
         <div className="filter-controls">
-          <select
-            className="notion-input"
-            value={filter.category}
-            onChange={e => setFilter({ ...filter, category: e.target.value })}
-          >
-            {categories.map(c => (
-              <option key={c} value={c}>
-                {c || 'All Categories'}
-              </option>
-            ))}
+          <select className="notion-input" value={filter.category} onChange={e => setFilter({ ...filter, category: e.target.value })}>
+            {categories.map(c => <option key={c} value={c}>{c || 'All Categories'}</option>)}
           </select>
-
-          <select
-            className="notion-input"
-            value={filter.status}
-            onChange={e => setFilter({ ...filter, status: e.target.value })}
-          >
-            {statuses.map(s => (
-              <option key={s} value={s}>
-                {s || 'All Statuses'}
-              </option>
-            ))}
+          <select className="notion-input" value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })}>
+            {statuses.map(s => <option key={s} value={s}>{s || 'All Statuses'}</option>)}
           </select>
-
-          <select
-            className="notion-input"
-            value={filter.sort}
-            onChange={e => setFilter({ ...filter, sort: e.target.value })}
-          >
+          <select className="notion-input" value={filter.sort} onChange={e => setFilter({ ...filter, sort: e.target.value })}>
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
           </select>
@@ -145,6 +152,11 @@ export default function Feed() {
                     🔒 Highly Sensitive
                   </span>
                 )}
+                {item.isSOS && (
+                  <span className="pill" style={{ background: '#dc2626', color: 'white' }}>
+                    🚨 SOS
+                  </span>
+                )}
                 {item.flagCount > 0 && (
                   <span className="pill" style={{ background: '#f59e0b', color: 'white' }}>
                     🚩 {item.flagCount} Report{item.flagCount > 1 ? 's' : ''}
@@ -160,23 +172,30 @@ export default function Feed() {
               <span>👤 {item.postedByEmail}</span>
             </div>
 
+            {item.category === 'ID Cards' && (
+              <div className="card-meta">
+                <span>🪪 {item.cardType || 'Unknown Card Type'}</span>
+                <span>👤 {item.holderName || 'Unknown Name'}</span>
+                <span>🆔 {item.idNumber || 'Unknown ID'}</span>
+              </div>
+            )}
+
             <div className="card-actions">
               {item.postedByEmail === currentUserEmail ? (
                 <>
                   {item.status !== 'Claimed' && item.status !== 'Resolved' && (
-                    <button
-                      className="btn-outline small"
-                      onClick={() => updateStatus(item._id, item.status === 'Found' ? 'Claimed' : 'Found')}
-                    >
+                    <button className="btn-outline small" onClick={() => updateStatus(item._id, item.status === 'Found' ? 'Claimed' : 'Found')}>
                       Toggle Found/Claimed
                     </button>
                   )}
                   {item.status !== 'Resolved' && (
-                    <button
-                      className="btn-outline small"
-                      onClick={() => updateStatus(item._id, 'Resolved')}
-                    >
+                    <button className="btn-outline small" onClick={() => updateStatus(item._id, 'Resolved')}>
                       Mark Resolved
+                    </button>
+                  )}
+                  {item.status === 'Lost' && !item.isSOS && (
+                    <button className="btn-primary small" onClick={() => handleSOS(item)}>
+                      🚨 Send SOS
                     </button>
                   )}
                 </>
@@ -187,22 +206,40 @@ export default function Feed() {
                       🖐️ Claim Item
                     </button>
                   )}
-
-                  <button
-                    className="btn-outline small"
-                    onClick={() => handleReport(item)}
-                  >
+                  <button className="btn-outline small" onClick={() => handleReport(item)}>
                     🚩 Report Suspicious
                   </button>
                 </>
               )}
+
+              {item.category === 'ID Cards' && (
+                <button className="btn-outline small" onClick={() => handleFindMatches(item._id)}>
+                  🪪 Find Match
+                </button>
+              )}
             </div>
+
+            {matches[item._id] && (
+              <div className="notion-card" style={{ marginTop: '12px', background: '#f8fafc' }}>
+                <h4>Possible Matches</h4>
+                {matches[item._id].length === 0 ? (
+                  <p>No likely matches found.</p>
+                ) : (
+                  matches[item._id].map(match => (
+                    <div key={match._id} style={{ marginBottom: '10px' }}>
+                      <p><strong>{match.title}</strong> ({match.status})</p>
+                      <p>Name: {match.holderName || 'N/A'}</p>
+                      <p>ID: {match.idNumber || 'N/A'}</p>
+                      <p>Type: {match.cardType || 'N/A'}</p>
+                      <p>Score: {match.matchScore}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         ))}
-
-        {items.length === 0 && (
-          <p className="empty-state">No items found matching your filters.</p>
-        )}
+        {items.length === 0 && <p className="empty-state">No items found matching your filters.</p>}
       </div>
     </section>
   );
