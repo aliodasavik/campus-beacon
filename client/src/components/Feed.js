@@ -7,6 +7,7 @@ const statuses = ['', 'Lost', 'Found', 'Claimed', 'Resolved'];
 export default function Feed() {
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState({ q: '', category: '', status: '', sort: 'newest' });
+  const [matches, setMatches] = useState({});
   const currentUserEmail = API.defaults.headers.common['x-user-email'];
 
   async function load() {
@@ -80,6 +81,18 @@ export default function Feed() {
     }
   };
 
+  const handleFindMatches = async (itemId) => {
+    try {
+      const res = await API.get(`/items/${itemId}/matches`);
+      setMatches(prev => ({
+        ...prev,
+        [itemId]: res.data
+      }));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error finding matches.');
+    }
+  };
+
   return (
     <section className="notion-page">
       <h1 className="page-title">Item Feed</h1>
@@ -136,6 +149,14 @@ export default function Feed() {
               <span>👤 {item.postedByEmail}</span>
             </div>
 
+            {item.category === 'ID Cards' && (
+              <div className="card-meta">
+                <span>🪪 {item.cardType || 'Unknown Card Type'}</span>
+                <span>👤 {item.holderName || 'Unknown Name'}</span>
+                <span>🆔 {item.idNumber || 'Unknown ID'}</span>
+              </div>
+            )}
+
             <div className="card-actions">
               {item.postedByEmail === currentUserEmail ? (
                 <>
@@ -162,7 +183,32 @@ export default function Feed() {
                   </button>
                 )
               )}
+
+              {item.category === 'ID Cards' && (
+                <button className="btn-outline small" onClick={() => handleFindMatches(item._id)}>
+                  🪪 Find Match
+                </button>
+              )}
             </div>
+
+            {matches[item._id] && (
+              <div className="notion-card" style={{ marginTop: '12px', background: '#f8fafc' }}>
+                <h4>Possible Matches</h4>
+                {matches[item._id].length === 0 ? (
+                  <p>No likely matches found.</p>
+                ) : (
+                  matches[item._id].map(match => (
+                    <div key={match._id} style={{ marginBottom: '10px' }}>
+                      <p><strong>{match.title}</strong> ({match.status})</p>
+                      <p>Name: {match.holderName || 'N/A'}</p>
+                      <p>ID: {match.idNumber || 'N/A'}</p>
+                      <p>Type: {match.cardType || 'N/A'}</p>
+                      <p>Score: {match.matchScore}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         ))}
         {items.length === 0 && <p className="empty-state">No items found matching your filters.</p>}
