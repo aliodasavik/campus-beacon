@@ -10,7 +10,7 @@ import { setAuthHeaders } from '../services/api';
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('feed');
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem('userEmail');
+  const userEmail = localStorage.getItem('userEmail'); // <-- This is the key!
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -71,6 +71,15 @@ export default function Dashboard() {
         </nav>
 
         <div className="sidebar-footer">
+          {/* NEW ADMIN DASHBOARD BUTTON */}
+          <button 
+            className="nav-btn" 
+            onClick={() => navigate('/admin')}
+            style={{ color: '#d97706', fontWeight: 'bold' }}
+          >
+            🛡️ Admin Dashboard
+          </button>
+
           <button className="nav-btn logout" onClick={handleLogout}>
             🚪 Logout
           </button>
